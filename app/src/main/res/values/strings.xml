@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">PachiSimulator</string>
+    <string name="todo_fragment">Hello todo fragment</string>
 </resources>
