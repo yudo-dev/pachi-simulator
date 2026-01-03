@@ -7,6 +7,10 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import com.example.pachisimulator.viewmodel.GameViewModel
+import com.example.pachisimulator.viewmodel.GameViewModelFactory
+import com.example.pachisimulator.PachiApplication
 import com.example.pachisimulator.R
 import kotlin.random.Random
 
@@ -16,11 +20,9 @@ import kotlin.random.Random
 
 class GameFragment : Fragment() {
 
-    // 当たった回数
-    private var hitCount = 0
-
-    // 全部の回転数の合計
-    private var totalRotation = 0
+    private val viewModel: GameViewModel by viewModels {
+        GameViewModelFactory((requireActivity().application as PachiApplication).repository)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,28 +37,40 @@ class GameFragment : Fragment() {
         val resultText = view.findViewById<TextView>(R.id.resultText)
         val statsText = view.findViewById<TextView>(R.id.statsText)
         val actionButton = view.findViewById<Button>(R.id.actionButton)
+        val resetButton = view.findViewById<Button>(R.id.resetButton) // ★ボタンを見つける
+        // データ監視
+        viewModel.allResults.observe(viewLifecycleOwner) { list ->
+            // 当たり回数
+            val totalHits = list.size
+            // 平均確率
+            viewModel.averageRotation.observe(viewLifecycleOwner) { avg ->
+                // 小数点第1位まで表示（データがないときは ---）
+                val avgText = if (avg != null) String.format("%.1f", avg) else "---"
+                statsText.text = "当たり: ${totalHits}回\n平均: 1/${avgText}"
+            }
+        }
 
+        // リセットボタン押下
+        resetButton.setOnClickListener {
+            // データを全消去
+            viewModel.resetData()
+        }
+
+        // 抽選開始ボタン押下
         actionButton.setOnClickListener {
-            // 今回の回転数
-            var currentCount = 0
+            var count = 0
 
-            // 当たりが出るまで回す
+            // 抽選ループ（1/319）
             while (true) {
-                currentCount++
+                count++
                 if (Random.nextInt(319) == 0) {
                     break
                 }
             }
 
-            // 当たり回数を増やす
-            hitCount++
-            // 合計回転数に足す
-            totalRotation += currentCount
-            // 平均確率を出す（合計回転数 ÷ 当たり回数）
-            val average = totalRotation / hitCount
-            // 画面更新
-            resultText.text = "${currentCount}回転目で\n当たり！"
-            statsText.text = "当たり: ${hitCount}回\n平均: 1/${average}"
+            // 結果を表示
+            resultText.text = "${count}回転目で\n当たり！"
+            viewModel.recordResult(count)
         }
     }
 }
